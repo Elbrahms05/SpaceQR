@@ -21,7 +21,7 @@ function renderHotspotName() {
 
 async function requestCameraPermission() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    setScannerHint("Browser tidak mendukung akses kamera.");
+    setScannerHint("Votre navigateur ne prend pas en charge l'accès à la caméra.");
     return false;
   }
 
@@ -30,10 +30,10 @@ async function requestCameraPermission() {
       video: { facingMode: "environment" }
     });
     stream.getTracks().forEach((track) => track.stop());
-    setScannerHint("Akses kamera diizinkan.");
+    setScannerHint("L'accès à la caméra est autorisé.");
     return true;
   } catch (_) {
-    setScannerHint("Akses kamera ditolak. Izinkan kamera di browser/WebView lalu coba lagi.");
+    setScannerHint("L'accès à la caméra a été refusé. Autorisez l'accès à la caméra dans le navigateur/WebView, puis réessayez.");
     return false;
   }
 }
@@ -106,7 +106,7 @@ function initBackLoginButton() {
 
 function startScanner() {
   if (loginAttempted) return;
-  setScannerHint("Memulai kamera...");
+  setScannerHint("Démarrage de la caméra...");
 
   qrReader = new Html5Qrcode("qr-reader");
 
@@ -124,7 +124,7 @@ function startScanner() {
           window.SpaceStars.stop();
         }
         qrReader.stop().then(() => {
-          setScannerHint("QR terdeteksi, mengalihkan...");
+          setScannerHint("QR code détecté, redirection...");
           setTimeout(() => {
             window.location.href = decodedText;
           }, 1500);
@@ -133,6 +133,6 @@ function startScanner() {
     )
     .catch(() => {
       loginAttempted = false;
-      setScannerHint("Kamera gagal dibuka. Tekan 'akses kamera' lalu izinkan permission.");
+      setScannerHint("La caméra n'a pas pu être ouverte. Cliquez sur « Accéder à la caméra » puis autorisez l'accès.");
     });
 }
