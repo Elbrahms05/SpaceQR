@@ -1,6 +1,40 @@
 let qrReader;
 let loginAttempted = false;
 
+/* ── Config backend (aligné sur portal.js) ── */
+const CFG = {
+  backendUrl: "https://wifizone.fite-ne.com", /* ← adapter selon votre backend */
+  /* Mode strict : si la vérification du profil est injoignable (réseau), on bloque
+     au lieu de laisser passer. Garder cohérent avec portal.js / verify_login.php. */
+  strictProfileCheck: true
+};
+
+function apiPost(path, data, timeoutMs) {
+  return fetch(CFG.backendUrl + path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Accept": "application/json" },
+    body: JSON.stringify(data),
+    signal: AbortSignal.timeout ? AbortSignal.timeout(timeoutMs || 4000) : undefined
+  }).then((r) => r.json());
+}
+
+/* Vérifie côté backend que le code scanné est autorisé (profil MikroTik valide).
+   15 s car l'API RouterOS est lente. */
+function verifyProfile(u) {
+  return apiPost("/api/verify_login.php", { username: u, package_id: 0 }, 15000);
+}
+
+/* Extrait l'identifiant/voucher du QR : soit un paramètre d'URL (username/user/voucher),
+   soit le texte brut si le QR n'est pas une URL. */
+function extractUsername(text) {
+  try {
+    const params = new URL(text).searchParams;
+    return (params.get("username") || params.get("user") || params.get("u") || params.get("voucher") || "").trim();
+  } catch (_) {
+    return (text || "").trim();
+  }
+}
+
 function setScannerHint(message) {
   const hintEl = document.getElementById("scannerHint");
   if (!hintEl) return;
@@ -120,14 +154,9 @@ function startScanner() {
       },
       (decodedText) => {
         loginAttempted = true;
-        if (window.SpaceStars) {
-          window.SpaceStars.stop();
-        }
         qrReader.stop().then(() => {
-          setScannerHint("QR code détecté, redirection...");
-          setTimeout(() => {
-            window.location.href = decodedText;
-          }, 1500);
+          setScannerHint("QR code détecté, vérification…");
+          verifyAndRedirect(decodedText);
         });
       }
     )
@@ -135,4 +164,48 @@ function startScanner() {
       loginAttempted = false;
       setScannerHint("La caméra n'a pas pu être ouverte. Cliquez sur « Accéder à la caméra » puis autorisez l'accès.");
     });
+}
+
+/* Contrôle backend du code scanné avant redirection (calque sur portal.js).
+   Tout refus → on bloque et on relance le scan ; sans identifiant exploitable,
+   on redirige directement (le QR porte sa propre URL de login). */
+function verifyAndRedirect(decodedText) {
+  const username = extractUsername(decodedText);
+
+  function redirect() {
+    if (window.SpaceStars) {
+      window.SpaceStars.stop();
+    }
+    setScannerHint("Connexion autorisée, redirection…");
+    setTimeout(() => {
+      window.location.href = decodedText;
+    }, 1500);
+  }
+
+  function refuse(message) {
+    loginAttempted = false;
+    setScannerHint(message);
+    /* Laisse l'utilisateur scanner un autre code. */
+    setTimeout(startScanner, 2500);
+  }
+
+  if (!username) {
+    redirect();
+    return;
+  }
+
+  verifyProfile(username).then((v) => {
+    if (v && v.ok === false) {
+      refuse(v.error || "Connexion refusée. Vérifiez votre code.");
+      return;
+    }
+    redirect();
+  }).catch((err) => {
+    console.error("verify_login.php injoignable :", err);
+    if (CFG.strictProfileCheck) {
+      refuse("Vérification impossible (réseau). Réessayez.");
+    } else {
+      redirect();
+    }
+  });
 }
