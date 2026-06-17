@@ -19,9 +19,10 @@ function apiPost(path, data, timeoutMs) {
 }
 
 /* Vérifie côté backend que le code scanné est autorisé (profil MikroTik valide).
+   Prend en compte l'identifiant du package (pkg) porté par l'URL du QR.
    15 s car l'API RouterOS est lente. */
-function verifyProfile(u) {
-  return apiPost("/api/verify_login.php", { username: u, package_id: 0 }, 15000);
+function verifyProfile(u, packageId) {
+  return apiPost("/api/verify_login.php", { username: u, package_id: packageId || 0 }, 15000);
 }
 
 /* Extrait l'identifiant/voucher du QR : soit un paramètre d'URL (username/user/voucher),
@@ -32,6 +33,17 @@ function extractUsername(text) {
     return (params.get("username") || params.get("user") || params.get("u") || params.get("voucher") || "").trim();
   } catch (_) {
     return (text || "").trim();
+  }
+}
+
+/* Extrait l'identifiant du package depuis l'URL du QR
+   (ex. https://elbrahms05.github.io/SpaceQR?pkg=ID&name=NOM&price=PRIX&currency=DEVISE). */
+function extractPackageId(text) {
+  try {
+    const params = new URL(text).searchParams;
+    return (params.get("pkg") || params.get("package_id") || params.get("package") || "").trim();
+  } catch (_) {
+    return "";
   }
 }
 
@@ -171,6 +183,7 @@ function startScanner() {
    on redirige directement (le QR porte sa propre URL de login). */
 function verifyAndRedirect(decodedText) {
   const username = extractUsername(decodedText);
+  const packageId = extractPackageId(decodedText);
 
   function redirect() {
     if (window.SpaceStars) {
@@ -189,12 +202,12 @@ function verifyAndRedirect(decodedText) {
     setTimeout(startScanner, 2500);
   }
 
-  if (!username) {
+  if (!username && !packageId) {
     redirect();
     return;
   }
 
-  verifyProfile(username).then((v) => {
+  verifyProfile(username, packageId).then((v) => {
     if (v && v.ok === false) {
       refuse(v.error || "Connexion refusée. Vérifiez votre code.");
       return;
