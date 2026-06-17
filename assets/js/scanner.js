@@ -36,15 +36,37 @@ function extractUsername(text) {
   }
 }
 
-/* Extrait l'identifiant du package depuis l'URL du QR
-   (ex. https://elbrahms05.github.io/SpaceQR?pkg=ID&name=NOM&price=PRIX&currency=DEVISE). */
-function extractPackageId(text) {
-  try {
-    const params = new URL(text).searchParams;
-    return (params.get("pkg") || params.get("package_id") || params.get("package") || "").trim();
-  } catch (_) {
-    return "";
+/* Lit le forfait sélectionné depuis l'URL de la PAGE
+   (ex. https://elbrahms05.github.io/SpaceQR?pkg=ID&name=NOM&price=PRIX&currency=DEVISE).
+   C'est la page qui porte le forfait, pas le QR scanné (qui est l'URL de login MikroTik). */
+function getSelectedPackage() {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    id: (params.get("pkg") || params.get("package_id") || params.get("package") || "").trim(),
+    name: (params.get("name") || "").trim(),
+    price: (params.get("price") || "").trim(),
+    currency: (params.get("currency") || "").trim()
+  };
+}
+
+/* Affiche le forfait sélectionné sur la page. */
+function renderSelectedPackage() {
+  const el = document.getElementById("selectedPackage");
+  if (!el) return;
+
+  const pkg = getSelectedPackage();
+  if (!pkg.id && !pkg.name) {
+    el.hidden = true;
+    return;
   }
+
+  const label = pkg.name || ("Forfait " + pkg.id);
+  const priceText = pkg.price ? (pkg.price + (pkg.currency ? " " + pkg.currency : "")) : "";
+
+  el.hidden = false;
+  el.innerHTML =
+    '<span class="pkg-name">' + label + "</span>" +
+    (priceText ? '<span class="pkg-price">' + priceText + "</span>" : "");
 }
 
 function setScannerHint(message) {
@@ -183,7 +205,7 @@ function startScanner() {
    on redirige directement (le QR porte sa propre URL de login). */
 function verifyAndRedirect(decodedText) {
   const username = extractUsername(decodedText);
-  const packageId = extractPackageId(decodedText);
+  const packageId = getSelectedPackage().id;
 
   function redirect() {
     if (window.SpaceStars) {

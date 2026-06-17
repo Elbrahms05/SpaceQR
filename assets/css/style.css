@@ -227,6 +227,30 @@ body.pro-lite .scan-frame::after {
   letter-spacing: 1px;
 }
 
+.selected-package {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin: 0 10px 12px;
+  padding: 8px 14px;
+  border: 1px solid rgba(166, 238, 249, 0.35);
+  border-radius: 12px;
+  background: rgba(166, 238, 249, 0.08);
+}
+
+.selected-package .pkg-name {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.selected-package .pkg-price {
+  color: #a6eef9;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 #scannerHint {
   color: #a6eef9;
   font-size: 12px;

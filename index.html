@@ -31,6 +31,7 @@
 
     <div class="bottom-section">
       <span class="title" style="margin-bottom: 25px;">Scannez le QR code pour vous connecter</span>
+      <div id="selectedPackage" class="selected-package" hidden></div>
       <div id="scannerHint">Si la caméra n'apparaît pas, cliquez sur « Accéder à la caméra ».</div>
       <div class="extra-buttons">
         <button type="button" id="cameraAccessBtn">
@@ -56,6 +57,7 @@
   <script>
     window.onload = function () {
       renderHotspotName();
+      renderSelectedPackage();
       initCameraAccessButton();
       initOpenBrowserButton();
       initBackLoginButton();
