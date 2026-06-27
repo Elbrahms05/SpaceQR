@@ -287,6 +287,24 @@ body.pro-lite .scan-frame::after {
   box-shadow: 0 0 10px #00f0ff;
 }
 
+/* Bouton mis en avant quand la caméra ne peut pas s'ouvrir (HTTP / WebView ancien)
+   et que la seule voie est d'ouvrir la page dans Chrome. */
+.extra-buttons button.is-recommended {
+  background: #00f0ff;
+  color: #1b233d;
+  box-shadow: 0 0 12px #00f0ff;
+  animation: pulse-recommended 1.4s ease-in-out infinite;
+}
+
+.extra-buttons button.is-recommended .btn-label {
+  color: #1b233d;
+}
+
+@keyframes pulse-recommended {
+  0%, 100% { box-shadow: 0 0 8px #00f0ff; }
+  50% { box-shadow: 0 0 18px #00f0ff; }
+}
+
 .extra-buttons i {
   display: inline-block;
   font-size: 14px;

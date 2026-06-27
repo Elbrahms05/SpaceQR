@@ -87,9 +87,29 @@ function renderHotspotName() {
   el.textContent = resolveHotspotName();
 }
 
+/* Vrai seulement si la caméra peut techniquement fonctionner :
+   - contexte sécurisé (HTTPS ou localhost) requis par getUserMedia,
+   - API mediaDevices.getUserMedia présente (absente sur certains WebView/anciens navigateurs).
+   Les portails captifs Mikrotik servant la page en HTTP, c'est le cas qui force
+   l'ouverture dans Chrome via l'URL HTTPS. */
+function isCameraSupported() {
+  const secure = window.isSecureContext ||
+    location.protocol === "https:" ||
+    ["localhost", "127.0.0.1"].includes(location.hostname);
+  return secure && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+}
+
+/* Met en évidence le bouton « Ouvrir le navigateur » comme action recommandée
+   quand la caméra ne peut pas démarrer dans le contexte actuel. */
+function highlightOpenBrowserButton() {
+  const btn = document.getElementById("openBrowserBtn");
+  if (btn) btn.classList.add("is-recommended");
+}
+
 async function requestCameraPermission() {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    setScannerHint("Votre navigateur ne prend pas en charge l'accès à la caméra.");
+  if (!isCameraSupported()) {
+    setScannerHint("La caméra n'est pas accessible ici (page non sécurisée ou navigateur trop ancien). Cliquez sur « Ouvrir le navigateur » pour ouvrir la page dans Chrome.");
+    highlightOpenBrowserButton();
     return false;
   }
 
@@ -174,6 +194,15 @@ function initBackLoginButton() {
 
 function startScanner() {
   if (loginAttempted) return;
+
+  /* Préflight : sans contexte sécurisé ni API caméra, inutile d'essayer —
+     on guide directement vers l'ouverture dans Chrome. */
+  if (!isCameraSupported()) {
+    setScannerHint("La caméra ne peut pas s'ouvrir ici (page non sécurisée ou navigateur trop ancien). Cliquez sur « Ouvrir le navigateur » pour continuer dans Chrome.");
+    highlightOpenBrowserButton();
+    return;
+  }
+
   setScannerHint("Démarrage de la caméra...");
 
   qrReader = new Html5Qrcode("qr-reader");
@@ -194,9 +223,20 @@ function startScanner() {
         });
       }
     )
-    .catch(() => {
+    .catch((err) => {
       loginAttempted = false;
-      setScannerHint("La caméra n'a pas pu être ouverte. Cliquez sur « Accéder à la caméra » puis autorisez l'accès.");
+      const name = (err && err.name) || "";
+
+      if (name === "NotAllowedError" || name === "SecurityError") {
+        setScannerHint("L'accès à la caméra a été refusé. Cliquez sur « Accéder à la caméra » puis autorisez l'accès.");
+      } else if (name === "NotFoundError" || name === "OverconstrainedError") {
+        setScannerHint("Aucune caméra arrière détectée sur cet appareil.");
+      } else if (name === "NotReadableError") {
+        setScannerHint("La caméra est déjà utilisée par une autre application. Fermez-la puis réessayez.");
+      } else {
+        setScannerHint("La caméra n'a pas pu s'ouvrir. Cliquez sur « Accéder à la caméra », ou « Ouvrir le navigateur » pour passer par Chrome.");
+        highlightOpenBrowserButton();
+      }
     });
 }
 
